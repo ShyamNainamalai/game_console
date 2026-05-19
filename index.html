@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCTS Host Console PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Mukta+Malar:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #020617;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .console-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-top: 4px solid #3b82f6;
+            transition: all 0.3s ease;
+        }
+
+        .folder-header {
+            font-size: 0.65rem;
+            color: #60a5fa;
+            border-bottom: 1px solid #1e293b;
+            padding: 6px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-btn {
+            background: #1e293b;
+            border: 1px solid #334155;
+            transition: all 0.15s;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.65rem;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .item-btn:hover {
+            background: #3b82f6;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .item-btn.active {
+            background: #10b981;
+            border-color: #34d399;
+            color: white;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+            z-index: 10;
+        }
+
+        .item-btn.used {
+            opacity: 0.4;
+            background: #0f172a;
+            color: #475569;
+        }
+        .item-btn.used::after {
+            content: "✕";
+            position: absolute;
+            font-size: 1.2rem;
+            color: #ef4444;
+            font-weight: 900;
+            pointer-events: none;
+        }
+
+        input[type="number"], input[type="text"], select {
+            background: #020617;
+            border: 1px solid #334155;
+            color: #10b981;
+            padding: 1px 3px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .timer-display {
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-success-action {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        }
+
+        .btn-failed-action {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        }
+
+        #custom-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+    </style>
+</head>
+<body class="p-3">
+
+    <div id="custom-modal">
+        <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h2 class="text-xl font-bold text-white mb-2">Already Clicked!</h2>
+            <p class="text-slate-400 mb-6 text-sm">This asset has been used. Do you want to display it again?</p>
+            <div class="flex gap-3">
+                <button id="modal-cancel" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all uppercase text-xs">Cancel</button>
+                <button id="modal-confirm" class="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-bold transition-all uppercase text-xs">Hit Again</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="flex flex-col xl:flex-row justify-between items-center mb-4 bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-2xl gap-3">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-1.5 rounded-lg text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h6"/></svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight uppercase">GCTS Console <span class="text-blue-500 text-sm font-mono">PRO</span></h1>
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] text-slate-500 uppercase font-bold text-nowrap">Ext:</span>
+                    <select id="ext-selector" class="text-[9px] bg-slate-950 border-slate-700 text-blue-400 font-bold px-1 py-0.5 rounded">
+                        <option value=".jpg">.JPG</option>
+                        <option value=".png" selected>.PNG</option>
+                        <option value=".jpeg">.JPEG</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slate-950 p-1.5 rounded-lg border border-slate-800">
+            <div class="px-3 border-r border-slate-800 text-center">
+                <p class="text-[8px] text-slate-500 uppercase font-bold">Set Time</p>
+                <input type="number" id="timer-input" value="30" class="text-center font-bold w-12 text-xs">
+            </div>
+            <div class="px-4 text-center min-w-[80px]">
+                <p id="timer-val" class="text-2xl font-black text-blue-400 timer-display">30</p>
+            </div>
+            <div class="flex gap-1">
+                <button onclick="startTimer()" class="p-1.5 bg-green-600/20 text-green-500 rounded hover:bg-green-600 hover:text-white transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button onclick="pauseTimer()" class="p-1.5 bg-yellow-600/20 text-yellow-500 rounded hover:bg-yellow-600 hover:text-white transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <button onclick="resetTimer()" class="p-1.5 bg-red-600/20 text-red-500 rounded hover:bg-red-600 hover:text-white transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+            </div>
+            <div class="flex flex-col gap-0.5 px-2 border-l border-slate-800">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" id="auto-timer" checked class="w-2.5 h-2.5 rounded accent-blue-600">
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Auto</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" id="mute-toggle" onchange="toggleMute()" class="w-2.5 h-2.5 rounded accent-red-600">
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Mute</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="sendResultSound('starter')" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition-all text-xs text-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                SHOW STARTER
+            </button>
+            <button onclick="masterReset()" class="bg-red-900/30 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-lg font-bold transition-all text-xs flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                MASTER RESET
+            </button>
+            <button onclick="openDisplay()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition-all text-xs text-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                OPEN DISPLAY
+            </button>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="console-panel rounded-xl overflow-hidden flex flex-col h-[55vh]">
+            <div class="folder-header"><span>📁 jumble_questions</span><input type="number" id="count-j-q" value="50" onchange="createButtons('j-q')" class="w-10"></div>
+            <div id="btns-j-q" class="p-2 grid grid-cols-6 gap-1.5 overflow-y-auto"></div>
+        </div>
+        <div class="console-panel rounded-xl overflow-hidden border-t-green-500 flex flex-col h-[55vh]">
+            <div class="folder-header text-green-400"><span>📁 jumble_answers</span><input type="number" id="count-j-a" value="50" onchange="createButtons('j-a')" class="w-10"></div>
+            <div id="btns-j-a" class="p-2 grid grid-cols-6 gap-1.5 overflow-y-auto text-green-400"></div>
+        </div>
+        <div class="console-panel rounded-xl overflow-hidden border-t-purple-500 flex flex-col h-[55vh]">
+            <div class="folder-header text-purple-400"><span>📁 GuessWord_Questions</span><input type="number" id="count-g-q" value="50" onchange="createButtons('g-q')" class="w-10"></div>
+            <div id="btns-g-q" class="p-2 grid grid-cols-6 gap-1.5 overflow-y-auto text-purple-400"></div>
+        </div>
+        <div class="console-panel rounded-xl overflow-hidden border-t-pink-500 flex flex-col h-[55vh]">
+            <div class="folder-header text-pink-400"><span>📁 GuessWord_Answers</span><input type="number" id="count-g-a" value="50" onchange="createButtons('g-a')" class="w-10"></div>
+            <div id="btns-g-a" class="p-2 grid grid-cols-6 gap-1.5 overflow-y-auto text-pink-400"></div>
+        </div>
+    </div>
+
+    <div class="mt-4 p-3 bg-slate-900 rounded-xl border border-slate-800 shadow-xl">
+        <div class="flex flex-row items-center gap-4 overflow-hidden">
+            
+            <div class="flex flex-col gap-1 items-center shrink-0">
+                <p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Audience</p>
+                <div id="mini-preview" class="w-40 h-24 bg-black rounded border border-slate-700 flex items-center justify-center text-[10px] text-slate-600 overflow-hidden relative">
+                    NO SIGNAL
+                    <div id="mini-timer" class="absolute top-1 right-1 bg-blue-600 text-white px-1 rounded text-[8px]">00</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1 items-center shrink-0 border-x border-slate-800 px-4">
+                <p class="text-[8px] text-emerald-500 font-bold uppercase tracking-widest">Host Answer</p>
+                <div id="answer-preview" class="w-40 h-24 bg-slate-950 rounded border border-emerald-500/30 flex items-center justify-center text-[9px] text-emerald-800 overflow-hidden relative">
+                    WAITING
+                </div>
+            </div>
+            
+            <div class="flex-1 flex flex-col justify-between min-h-[104px] py-0.5">
+                <!-- Team Names/Points Inputs Row -->
+                <div class="flex items-center gap-3 mb-2 px-1 overflow-x-auto">
+                    <div class="flex gap-1.5">
+                        <div class="flex flex-col gap-0.5">
+                            <input type="text" id="name-t1" value="Team 1" class="w-16 text-[8px] text-slate-400 uppercase font-black bg-slate-950 border-none text-center p-0.5 rounded">
+                            <input type="number" id="score-t1" value="0" class="w-16 text-center bg-slate-950 border-slate-700 text-yellow-500 font-bold text-xs p-1 rounded">
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <input type="text" id="name-t2" value="Team 2" class="w-16 text-[8px] text-slate-400 uppercase font-black bg-slate-950 border-none text-center p-0.5 rounded">
+                            <input type="number" id="score-t2" value="0" class="w-16 text-center bg-slate-950 border-slate-700 text-yellow-500 font-bold text-xs p-1 rounded">
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <input type="text" id="name-t3" value="Team 3" class="w-16 text-[8px] text-slate-400 uppercase font-black bg-slate-950 border-none text-center p-0.5 rounded">
+                            <input type="number" id="score-t3" value="0" class="w-16 text-center bg-slate-950 border-slate-700 text-yellow-500 font-bold text-xs p-1 rounded">
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <input type="text" id="name-t4" value="Team 4" class="w-16 text-[8px] text-slate-400 uppercase font-black bg-slate-950 border-none text-center p-0.5 rounded">
+                            <input type="number" id="score-t4" value="0" class="w-16 text-center bg-slate-950 border-slate-700 text-yellow-500 font-bold text-xs p-1 rounded">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Large Control Grid -->
+                <div class="grid grid-cols-6 gap-2 px-1">
+                    <button onclick="clearDisplay()" class="text-[9px] bg-slate-800 border border-slate-700 h-10 rounded-lg hover:bg-slate-700 transition-colors uppercase font-bold text-slate-300">Blackout</button>
+                    <button onclick="sendFlash()" class="text-[9px] bg-slate-800 border border-slate-700 h-10 rounded-lg hover:bg-yellow-600 transition-colors uppercase font-bold text-slate-300">Flash</button>
+                    
+                    <!-- Equalized Points and Gen Buttons -->
+                    <button onclick="displayScoreboard()" class="text-[9px] bg-blue-600 border border-blue-500 h-10 rounded-lg hover:bg-blue-500 transition-all uppercase font-black text-white">Points</button>
+                    <button onclick="displayGenerator()" class="text-[9px] bg-indigo-600 border border-indigo-500 h-10 rounded-lg hover:bg-indigo-500 transition-all uppercase font-black text-white">Gen</button>
+                    
+                    <button onclick="sendResultSound('success')" class="text-[9px] btn-success-action h-10 rounded-lg hover:brightness-110 transition-all uppercase font-black text-white">SUCCESS</button>
+                    <button onclick="sendResultSound('failed')" class="text-[9px] btn-failed-action h-10 rounded-lg hover:brightness-110 transition-all uppercase font-black text-white">FAILED</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let displayWindow = null;
+        let timerInterval = null;
+        let currentTime = 30;
+        let isPaused = true;
+        let clickedAssets = new Set();
+
+        const FOLDER_MAP = {
+            'j-q': 'jumble_questions',
+            'j-a': 'jumble_answers',
+            'g-q': 'GuessWord_Questions',
+            'g-a': 'GuessWord_Answers'
+        };
+
+        const ANSWER_FOLDER_MAP = {
+            'j-q': 'j-a',
+            'g-q': 'g-a'
+        };
+
+        function getExt() {
+            return document.getElementById('ext-selector').value;
+        }
+
+        function startTimer() {
+            if (!isPaused) return;
+            isPaused = false;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (currentTime > 0) {
+                    currentTime--;
+                    updateTimerUI();
+                } else {
+                    clearInterval(timerInterval);
+                    isPaused = true;
+                    if (displayWindow && !displayWindow.closed) displayWindow.postMessage({ type: 'buzzer' }, '*');
+                }
+            }, 1000);
+            if (displayWindow && !displayWindow.closed) displayWindow.postMessage({ type: 'audioState', data: 'running' }, '*');
+        }
+
+        function pauseTimer() {
+            isPaused = true;
+            clearInterval(timerInterval);
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'audioState', data: 'paused' }, '*');
+            }
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            currentTime = parseInt(document.getElementById('timer-input').value) || 30;
+            updateTimerUI();
+        }
+
+        function updateTimerUI() {
+            const timerVal = document.getElementById('timer-val');
+            const miniTimer = document.getElementById('mini-timer');
+            timerVal.innerText = currentTime;
+            if(miniTimer) miniTimer.innerText = currentTime;
+            if (currentTime <= 5) timerVal.className = "text-2xl font-black text-red-500 animate-pulse timer-display";
+            else if (currentTime <= 10) timerVal.className = "text-2xl font-black text-orange-500 timer-display";
+            else timerVal.className = "text-2xl font-black text-blue-400 timer-display";
+            if (displayWindow && !displayWindow.closed) displayWindow.postMessage({ type: 'timer', data: currentTime }, '*');
+        }
+
+        function toggleMute() {
+            const muted = document.getElementById('mute-toggle').checked;
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'mute', data: muted }, '*');
+            }
+        }
+
+        function sendResultSound(type) {
+            if (displayWindow && !displayWindow.closed) {
+                let fileName = (type === 'success') ? 'claps.mp3' : (type === 'failed') ? 'failed.mp3' : 'starter.mp3';
+                displayWindow.postMessage({ type: 'playAudioFile', data: `music/${fileName}` }, '*');
+                if (type === 'success') pauseTimer();
+            }
+        }
+
+        function createButtons(type) {
+            const count = document.getElementById(`count-${type}`).value;
+            const container = document.getElementById(`btns-${type}`);
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                const btn = document.createElement('button');
+                const assetId = `${type}-${i}`;
+                btn.className = 'item-btn' + (clickedAssets.has(assetId) ? ' used' : '');
+                btn.id = assetId;
+                btn.innerText = i;
+                btn.onclick = () => handleButtonClick(type, i, btn);
+                container.appendChild(btn);
+            }
+        }
+
+        function handleButtonClick(type, id, btnElement) {
+            const assetId = `${type}-${id}`;
+            if (clickedAssets.has(assetId)) {
+                showModal(() => executeSendItem(type, id, btnElement));
+            } else {
+                executeSendItem(type, id, btnElement);
+            }
+        }
+
+        function executeSendItem(type, id, btnElement) {
+            const assetId = `${type}-${id}`;
+            clickedAssets.add(assetId);
+            btnElement.classList.add('used');
+            const folder = FOLDER_MAP[type];
+            const currentExt = getExt();
+            const imagePath = `${folder}/${id}${currentExt}`;
+            const isAnswer = type.endsWith('-a');
+            document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            document.getElementById('mini-preview').innerHTML = `<img src="${imagePath}" class="w-full h-full object-contain" onerror="this.parentElement.innerText='MISSING';"><div id="mini-timer" class="absolute top-1 right-1 bg-blue-600 text-white px-1 rounded text-[8px]">${currentTime}</div>`;
+            if (!isAnswer && ANSWER_FOLDER_MAP[type]) {
+                const ansPath = `${FOLDER_MAP[ANSWER_FOLDER_MAP[type]]}/${id}${currentExt}`;
+                document.getElementById('answer-preview').innerHTML = `<img src="${ansPath}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=text-red-500>MISSING</span>';">`;
+            } else if (isAnswer) {
+                document.getElementById('answer-preview').innerHTML = "<span class='text-emerald-500 font-bold'>LIVE</span>";
+            }
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'image', data: imagePath }, '*');
+                displayWindow.postMessage({ type: 'timerVisibility', data: !isAnswer }, '*');
+                if (isAnswer) pauseTimer();
+                else if (document.getElementById('auto-timer').checked) { resetTimer(); startTimer(); }
+            }
+        }
+
+        function masterReset() {
+            clickedAssets.clear();
+            document.querySelectorAll('.item-btn').forEach(btn => {
+                btn.classList.remove('used'); btn.classList.remove('active');
+            });
+            document.getElementById('mini-preview').innerHTML = "SYSTEM RESET";
+            document.getElementById('answer-preview').innerHTML = "WAITING";
+        }
+
+        let currentModalAction = null;
+        function showModal(onConfirm) {
+            currentModalAction = onConfirm;
+            document.getElementById('custom-modal').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('custom-modal').style.display = 'none';
+            currentModalAction = null;
+        }
+        document.getElementById('modal-confirm').onclick = () => { if (currentModalAction) currentModalAction(); closeModal(); };
+        document.getElementById('modal-cancel').onclick = closeModal;
+
+        function displayScoreboard() {
+            const data = {
+                t1: { n: document.getElementById('name-t1').value, s: document.getElementById('score-t1').value },
+                t2: { n: document.getElementById('name-t2').value, s: document.getElementById('score-t2').value },
+                t3: { n: document.getElementById('name-t3').value, s: document.getElementById('score-t3').value },
+                t4: { n: document.getElementById('name-t4').value, s: document.getElementById('score-t4').value }
+            };
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'points', data }, '*');
+                displayWindow.postMessage({ type: 'timerVisibility', data: false }, '*');
+            }
+            document.getElementById('mini-preview').innerHTML = "<div class='text-blue-500 font-bold text-center text-[8px] font-black'>POINTS LIVE</div>";
+            pauseTimer();
+        }
+
+        function displayGenerator() {
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'generator_on' }, '*');
+                displayWindow.postMessage({ type: 'timerVisibility', data: false }, '*');
+            }
+            document.getElementById('mini-preview').innerHTML = "<div class='text-indigo-500 font-bold text-center text-[8px] font-black'>GEN LIVE</div>";
+            pauseTimer();
+        }
+
+        function clearDisplay() {
+            if (displayWindow && !displayWindow.closed) {
+                displayWindow.postMessage({ type: 'clear' }, '*');
+                displayWindow.postMessage({ type: 'timerVisibility', data: true }, '*');
+            }
+            document.getElementById('mini-preview').innerHTML = "BLACKOUT";
+            document.getElementById('answer-preview').innerHTML = "WAITING";
+            pauseTimer();
+        }
+
+        function sendFlash() { if (displayWindow && !displayWindow.closed) displayWindow.postMessage({ type: 'flash' }, '*'); }
+
+        function openDisplay() {
+            const width = 1280, height = 720;
+            const left = (screen.width/2)-(width/2), top = (screen.height/2)-(height/2);
+            displayWindow = window.open('', 'GCTS_Display', `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no`);
+            displayWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>DISPLAY</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
+                        body { background: black; color: white; margin: 0; overflow: hidden; font-family: sans-serif; }
+                        #content-container { height: 100vh; display: flex; flex-direction: column; background: #000; position: relative; }
+                        #display-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 20px; }
+                        img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 100px rgba(59, 130, 246, 0.15); border-radius: 12px; }
+                        #points-board { position: absolute; inset: 0; background: radial-gradient(circle at center, #0f172a, #000); display: none; grid-template-columns: repeat(2, 1fr); gap: 40px; padding: 60px; z-index: 50; }
+                        .team-card { background: rgba(30, 41, 59, 0.5); border: 4px solid #1e293b; border-radius: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+                        .team-name { font-size: 40px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 10px; }
+                        .team-score { font-family: 'JetBrains Mono', monospace; font-size: 160px; font-weight: 800; color: #fbbf24; text-shadow: 0 0 40px rgba(251, 191, 36, 0.4); }
+                        #num-generator { position: absolute; inset: 0; background: radial-gradient(circle at center, #1e293b, #0f172a); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 60; }
+                        .lottery-ball { width: 350px; height: 350px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8, #1e3a8a); box-shadow: inset -20px -20px 50px rgba(0,0,0,0.5), 0 20px 40px rgba(0,0,0,0.4), inset 10px 10px 20px rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; }
+                        .ball-number { font-size: 8rem; font-weight: 800; color: white; }
+                        .spinning { animation: spinAnim 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+                        @keyframes spinAnim { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(360deg) scale(0.9); } 100% { transform: rotate(720deg) scale(1); } }
+                        .shake { animation: shakeAnim 0.4s ease-in-out; }
+                        @keyframes shakeAnim { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } }
+                        #timer-footer { height: 180px; background: linear-gradient(to top, #0f172a, #000); border-top: 6px solid #3b82f6; display: flex; align-items: center; justify-content: center; z-index: 10; }
+                        #timer-overlay { font-family: 'JetBrains Mono', monospace; font-size: 140px; font-weight: 800; color: #60a5fa; }
+                        .timer-low { color: #ef4444 !important; animation: pulse 0.5s infinite alternate; }
+                        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+                        #audio-lock { position: absolute; inset: 0; background: rgba(2, 6, 23, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
+                    </style>
+                </head>
+                <body>
+                    <div id="audio-lock" onclick="unlockAudio()"><h1 class="text-4xl font-black text-blue-400">CLICK TO ENABLE SYNC</h1></div>
+                    <div id="content-container">
+                        <div id="points-board">
+                            <div class="team-card"><div id="name-t1-disp" class="team-name">Team 1</div><div id="val-t1" class="team-score">0</div></div>
+                            <div class="team-card"><div id="name-t2-disp" class="team-name">Team 2</div><div id="val-t2" class="team-score">0</div></div>
+                            <div class="team-card"><div id="name-t3-disp" class="team-name">Team 3</div><div id="val-t3" class="team-score">0</div></div>
+                            <div class="team-card"><div id="name-t4-disp" class="team-name">Team 4</div><div id="val-t4" class="team-score">0</div></div>
+                        </div>
+                        <div id="num-generator">
+                            <div id="setup-gen" class="bg-slate-800/80 p-8 rounded-3xl text-center border border-white/10">
+                                <h1 class="text-3xl font-bold mb-6 text-blue-400">Number Gen</h1>
+                                <div class="flex gap-4 mb-6"><input type="number" id="min-in" value="1" class="w-1/2 bg-black p-4 rounded-xl text-center border border-slate-700"><input type="number" id="max-in" value="50" class="w-1/2 bg-black p-4 rounded-xl text-center border border-slate-700"></div>
+                                <button onclick="initGen()" class="w-full bg-blue-600 p-4 rounded-xl font-bold">Start</button>
+                            </div>
+                            <div id="active-gen" class="hidden flex flex-col items-center">
+                                <div class="lottery-ball mb-10" onclick="pickNum()"><span id="ball-val" class="ball-number">?</span></div>
+                                <div id="gen-history" class="flex flex-wrap gap-2 justify-center max-h-32 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                        <div id="display-area">
+                            <img id="main-img" class="hidden" src="">
+                            <h1 id="placeholder" class="text-4xl text-slate-800 font-bold opacity-30 uppercase">GCTS SHOW</h1>
+                        </div>
+                        <div id="timer-footer"><div id="timer-overlay">30</div></div>
+                    </div>
+                    <script>
+                        let audioCtx = null; let isMuted = false; let avail = []; let picked = [];
+                        async function unlockAudio() {
+                            try { if (!audioCtx) audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') await audioCtx.resume(); document.getElementById('audio-lock').style.display='none'; } catch(e){}
+                        }
+                        function playTick(freq, vol=0.1) {
+                            if (isMuted || !audioCtx || audioCtx.state !== 'running') return;
+                            const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
+                            o.type='sine'; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.1);
+                        }
+                        function playLocalFile(path) { if (!isMuted) new Audio(path).play(); }
+                        function initGen() {
+                            const min=parseInt(document.getElementById('min-in').value); const max=parseInt(document.getElementById('max-in').value);
+                            avail=[]; for(let i=min; i<=max; i++) avail.push(i); picked=[];
+                            document.getElementById('setup-gen').classList.add('hidden'); document.getElementById('active-gen').classList.remove('hidden');
+                        }
+                        function pickNum() {
+                            if (avail.length===0) return; const ball=document.querySelector('.lottery-ball'); const valEl=document.getElementById('ball-val');
+                            ball.classList.remove('spinning','shake'); void ball.offsetWidth; ball.classList.add('spinning');
+                            let f=setInterval(()=>valEl.innerText=avail[Math.floor(Math.random()*avail.length)],60);
+                            setTimeout(()=>{
+                                clearInterval(f); const idx=Math.floor(Math.random()*avail.length); const n=avail.splice(idx,1)[0]; picked.push(n);
+                                valEl.innerText=n; ball.classList.remove('spinning'); ball.classList.add('shake');
+                                const p=document.createElement('div'); p.className='bg-white/10 px-4 py-2 rounded font-bold'; p.innerText=n; document.getElementById('gen-history').prepend(p);
+                                playTick(600,0.2);
+                            }, 1500);
+                        }
+                        window.onmessage = (event) => {
+                            const { type, data } = event.data; const img=document.getElementById('main-img'); const ph=document.getElementById('placeholder');
+                            const pb=document.getElementById('points-board'); const gen=document.getElementById('num-generator');
+                            const footer=document.getElementById('timer-footer'); const timer=document.getElementById('timer-overlay');
+                            if (audioCtx && audioCtx.state==='suspended' && type!=='mute') audioCtx.resume();
+                            if (type==='points') {
+                                pb.style.display='grid'; gen.style.display='none'; img.classList.add('hidden'); ph.classList.add('hidden');
+                                Object.keys(data).forEach(k => {
+                                    document.getElementById('name-'+k+'-disp').innerText=data[k].n;
+                                    document.getElementById('val-'+k).innerText=data[k].s;
+                                });
+                            } else if (type==='generator_on') {
+                                gen.style.display='flex'; pb.style.display='none'; img.classList.add('hidden'); ph.classList.add('hidden');
+                            } else if (type==='image') {
+                                pb.style.display='none'; gen.style.display='none'; ph.classList.add('hidden'); img.src=data; img.classList.remove('hidden');
+                            } else if (type==='timer') {
+                                timer.innerText=data; timer.className=(data<=10&&data>0)?'timer-low':'';
+                                if(data<=10&&data>0) playTick(880,0.18); else if(data>0) playTick(440,0.06);
+                            } else if (type==='playAudioFile') { playLocalFile(data); }
+                            else if (type==='timerVisibility') { footer.style.display=data?'flex':'none'; }
+                            else if (type==='clear') { img.classList.add('hidden'); ph.classList.remove('hidden'); pb.style.display='none'; gen.style.display='none'; }
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+        }
+        window.onload = () => { ['j-q', 'j-a', 'g-q', 'g-a'].forEach(createButtons); currentTime = parseInt(document.getElementById('timer-input').value); };
+    </script>
+</body>
+</html>
